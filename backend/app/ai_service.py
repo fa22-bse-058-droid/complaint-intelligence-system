@@ -4,22 +4,23 @@ from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# Explicitly load backend/.env
+# Explicitly load backend/.env (utf-8-sig also tolerates a BOM at the start of the file)
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", encoding="utf-8-sig")
 
-XAI_API_KEY = os.getenv("XAI_API_KEY")
-GROK_MODEL = os.getenv("GROK_MODEL", "grok-4-fast")
+LLM_API_KEY = os.getenv("LLM_API_KEY")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
 
-if not XAI_API_KEY:
+if not LLM_API_KEY:
     raise ValueError(
-        "XAI_API_KEY was not found. Check that backend/.env exists "
-        "and contains XAI_API_KEY."
+        "LLM_API_KEY was not found. Check that backend/.env exists "
+        "and contains LLM_API_KEY."
     )
 
 client = OpenAI(
-    api_key=XAI_API_KEY,
-    base_url="https://api.x.ai/v1"
+    api_key=LLM_API_KEY,
+    base_url=LLM_BASE_URL,
 )
 
 SYSTEM_PROMPT = """You are an AI assistant for a municipal complaint intelligence system.
@@ -39,13 +40,13 @@ minor/cosmetic issues = Low). Be decisive - always pick exactly one category and
 
 def analyze_with_ai(complaint_text: str) -> dict:
     """
-    Sends the complaint to Grok and returns a dict with the 6 required keys.
+    Sends the complaint to the configured LLM and returns a dict with the 6 required keys.
     Raises ValueError if the API fails or returns invalid JSON, so main.py
     can turn that into a proper HTTP error instead of crashing.
     """
     try:
         response = client.chat.completions.create(
-            model=GROK_MODEL,
+            model=LLM_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": complaint_text},
